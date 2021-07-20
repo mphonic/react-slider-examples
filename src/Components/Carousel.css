@@ -1,0 +1,24 @@
+.carouselTrackWrapper {
+    position: relative;
+    overflow: hidden;
+}
+
+.carouselTrack {
+    display: flex;
+    flex-wrap: nowrap;
+    width: 100%;
+}
+
+.carouselItem {
+    justify-items: center;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.carouselItem.selected {
+    border: 1px solid #ccc;
+}
+
+.carouselItem.selected.centerMode {
+    transform: scale(110%);
+}
