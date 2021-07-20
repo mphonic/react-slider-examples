@@ -10,7 +10,7 @@ export default function CarouselTrack({ children, index = 0, visibleItems = 1, t
     useEffect(() => {
         if (index === undefined || index === currentIndex) return;
         performTransition(index);
-    }, [index]);
+    }, [index]); // eslint-disable-line react-hooks/exhaustive-deps
 
     let referenceIndex = -1;
 
