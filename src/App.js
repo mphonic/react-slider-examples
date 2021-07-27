@@ -31,6 +31,8 @@ function App() {
   const settings = {
     index: carouselIndex,
     visibleItems: 1,
+    numItems: carouselItems.length,
+    infiniteMode: true,
     transitionTime: 500,
     onIndexChange: onCarouselIndexChange
   }
