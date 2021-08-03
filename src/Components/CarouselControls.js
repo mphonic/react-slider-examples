@@ -8,7 +8,7 @@ export default function CarouselControls({ index = 0, numItems = 3, transitionTi
         const indexOffset = !infiniteMode ? 0 : visibleItems;
         const firstIndex = indexOffset;
         updateIndex(firstIndex);
-    }, []);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     const updateIndex = (index) => {
         index = infiniteMode ? index : index % numItems;

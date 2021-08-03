@@ -32,7 +32,7 @@ export default function CarouselTrack({ children, index = 0, visibleItems = 1, i
         return () => {
             window.removeEventListener('resize', windowResizeAdjustment)
         }
-    }, []);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
         console.log('called useEffect on index change');
@@ -43,7 +43,7 @@ export default function CarouselTrack({ children, index = 0, visibleItems = 1, i
         if (index === undefined || index === currentIndex) return;
         performTransition(index);
     }, [index]); // eslint-disable-line react-hooks/exhaustive-deps
-;
+
     let referenceIndex = -1;
 
     const getOffset = (index) => {
