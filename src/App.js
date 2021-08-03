@@ -34,6 +34,7 @@ function App() {
     numItems: carouselItems.length,
     infiniteMode: true,
     transitionTime: 500,
+    disableOnTransition: false,
     onIndexChange: onCarouselIndexChange
   }
 

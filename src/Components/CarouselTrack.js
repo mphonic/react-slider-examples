@@ -2,17 +2,48 @@ import { useState, useEffect, useRef } from "react";
 import "./Carousel.css";
 
 export default function CarouselTrack({ children, index = 0, visibleItems = 1, infiniteMode = false, transitionTime = 500 }) {
-    const [currentIndex, setCurrentIndex] = useState(0);
+    const [currentIndex, _setCurrentIndex] = useState(0);
     const [offset, setOffset] = useState(0);
     const [animate, setAnimate] = useState(true);
 
     const items = useRef([]);
+    const currentIndexRef = useRef(currentIndex);
+    const timeout = useRef(null);
+    const hasLoaded = useRef(false);
+
+    const setCurrentIndex = (index) => {
+        currentIndexRef.current = index;
+        _setCurrentIndex(index);
+    }
 
     useEffect(() => {
+        const indexOffset = !infiniteMode ? 0 : visibleItems;
+        const firstIndex = index + indexOffset;
+        performTransition(firstIndex, false);
+
+        console.log('called initial useEffect');
+
+        let debounceTimeout = null;
+        const windowResizeAdjustment = () => {
+            clearTimeout(debounceTimeout);
+            debounceTimeout = setTimeout(() => performTransition(currentIndexRef.current, false), 150);
+        }
+        window.addEventListener('resize', windowResizeAdjustment);
+        return () => {
+            window.removeEventListener('resize', windowResizeAdjustment)
+        }
+    }, []);
+
+    useEffect(() => {
+        console.log('called useEffect on index change');
+        if (!hasLoaded.current) {
+            hasLoaded.current = true;
+            return;
+        }
         if (index === undefined || index === currentIndex) return;
         performTransition(index);
     }, [index]); // eslint-disable-line react-hooks/exhaustive-deps
-
+;
     let referenceIndex = -1;
 
     const getOffset = (index) => {
@@ -35,13 +66,28 @@ export default function CarouselTrack({ children, index = 0, visibleItems = 1, i
         const needsSwap = doesIndexRequireSwap(newIndex);
         const nextIndex = needsSwap ? getWraparoundIndex(newIndex) : newIndex;
         // console.log('performing transition', newIndex, nextIndex, needsSwap);
+
+        if (timeout.current) {
+            clearTimeout(timeout.current);
+            timeout.current = null;
+            if (doesIndexRequireSwap(currentIndex)) {
+                setAnimate(false);
+                const index = getWraparoundIndex(currentIndex);
+                setCurrentIndex(index);
+                setOffset(getOffset(index));
+                setTimeout(() => performTransition(newIndex, doAnimate));
+                return;
+            }
+        }
+
         setAnimate(doAnimate);
 
         if (needsSwap) {
             setCurrentIndex(newIndex);
             setOffset(getOffset(newIndex));
-            setTimeout(() => {
+            timeout.current = setTimeout(() => {
                 performTransition(nextIndex, false);
+                timeout.current = null;
             }, transitionTime);
             return;
         }
@@ -78,7 +124,7 @@ export default function CarouselTrack({ children, index = 0, visibleItems = 1, i
 
     return (
         <div className="carouselTrackWrapper">
-            <div className="carouselTrack" style={{ transform: `translate3d(${offset}px, 0, 0)`, transitionDuration: `${animate ? transitionTime : '0'}ms`}}>
+            <div className="carouselTrack" style={{ transform: `translate3d(${offset}px, 0, 0)`, transitionDuration: `${animate ? transitionTime : 0}ms`, visibility: hasLoaded.current ? 'visible' : 'hidden'}}>
                 { infiniteMode && renderClones(true) }
                 { children.map((e, c) => renderItem(e)) }
                 { infiniteMode && renderClones(false) }
