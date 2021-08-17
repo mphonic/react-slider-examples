@@ -22,3 +22,16 @@
 .carouselItem.selected.centerMode {
     transform: scale(110%);
 }
+
+.carouselPage,
+.carouselThumbnail {
+    cursor: pointer;
+}
+
+.carouselPage.selected {
+    font-weight: bold;
+}
+
+.carouselThumbnail.selected {
+    border: 1px solid #333;
+}

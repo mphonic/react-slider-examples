@@ -2,6 +2,7 @@ import { useState } from "react";
 import './App.css';
 import CarouselTrack from './Components/CarouselTrack';
 import CarouselControls from "./Components/CarouselControls";
+import CarouselPages from "./Components/CarouselPages";
 
 const carouselItems = [
   {
@@ -23,19 +24,26 @@ const carouselItems = [
 
 function App() {
   const [carouselIndex, setCarouselIndex] = useState(0);
+  const [carouselItemIndex, setCarouselItemIndex] = useState(0);
 
   const onCarouselIndexChange = (index) => {
     setCarouselIndex(index);
   }
 
+  const onCarouselItemIndexChange = (index) => {
+    setCarouselItemIndex(index);
+  }
+
   const settings = {
     index: carouselIndex,
+    itemIndex: carouselItemIndex,
     visibleItems: 1,
     numItems: carouselItems.length,
     infiniteMode: true,
     transitionTime: 500,
     disableOnTransition: false,
-    onIndexChange: onCarouselIndexChange
+    onIndexChange: onCarouselIndexChange,
+    onItemIndexChange: onCarouselItemIndexChange
   }
 
   return (
@@ -51,6 +59,12 @@ function App() {
         }
       </CarouselTrack>
       <CarouselControls {...settings}></CarouselControls>
+      <CarouselPages {...settings}></CarouselPages>
+      <CarouselPages {...settings}>
+        {
+          carouselItems.map((e, c) => <img key={e.image} src={e.image} alt={e.title} />)
+        }
+      </CarouselPages>
     </div>
   );
 }

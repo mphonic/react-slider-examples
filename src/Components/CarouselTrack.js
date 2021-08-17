@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import "./Carousel.css";
 
-export default function CarouselTrack({ children, index = 0, visibleItems = 1, infiniteMode = false, transitionTime = 500 }) {
+export default function CarouselTrack({ children, index = 0, itemIndex = 0, visibleItems = 1, infiniteMode = false, transitionTime = 500 }) {
     const [currentIndex, _setCurrentIndex] = useState(0);
     const [offset, setOffset] = useState(0);
     const [animate, setAnimate] = useState(true);
@@ -18,7 +18,7 @@ export default function CarouselTrack({ children, index = 0, visibleItems = 1, i
 
     useEffect(() => {
         const indexOffset = !infiniteMode ? 0 : visibleItems;
-        const firstIndex = index + indexOffset;
+        const firstIndex = index == null ? itemIndex + indexOffset : Math.max(index, indexOffset);
         performTransition(firstIndex, false);
 
         console.log('called initial useEffect');
@@ -40,9 +40,15 @@ export default function CarouselTrack({ children, index = 0, visibleItems = 1, i
             hasLoaded.current = true;
             return;
         }
-        if (index === undefined || index === currentIndex) return;
-        performTransition(index);
-    }, [index]); // eslint-disable-line react-hooks/exhaustive-deps
+        let nextIndex;
+        if (!infiniteMode) {
+            nextIndex = itemIndex === currentIndex ? index : itemIndex;
+        } else {
+            nextIndex = (index !== currentIndex) ? index : itemIndex + visibleItems;
+        }
+        if (nextIndex === currentIndex) return;
+        performTransition(nextIndex);
+    }, [index, itemIndex]); // eslint-disable-line react-hooks/exhaustive-deps
 
     let referenceIndex = -1;
 
