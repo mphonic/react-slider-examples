@@ -1,46 +1,59 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useSwipeable } from "react-swipeable";
+
 import "./Carousel.css";
 
-export default function CarouselTrack({ children, index = 0, itemIndex = 0, visibleItems = 1, infiniteMode = false, transitionTime = 500, onIndexChange }) {
-    const [currentIndex, _setCurrentIndex] = useState(0);
+export default function CarouselTrack({ 
+    children, 
+    index = 0,
+    itemIndex = 0, 
+    transitionTime = 300, 
+    visibleItems = 1, 
+    infiniteMode = false,
+    centerMode = false, 
+    centerWidth = 1,
+    onIndexChange,
+    onItemClick,
+    onItemHover,
+    onItemUnHover 
+    }) {
+    const [currentIndex, _setCurrentIndex] = useState(index);
     const [offset, setOffset] = useState(0);
-    const [animate, setAnimate] = useState(true);
+    const [animate, setAnimate] = useState(false);
 
-    const items = useRef([]);
     const currentIndexRef = useRef(currentIndex);
-    const timeout = useRef(null);
+    const items = useRef([]);
     const hasLoaded = useRef(false);
+    const timeout = useRef();
 
     const setCurrentIndex = (index) => {
         currentIndexRef.current = index;
         _setCurrentIndex(index);
     }
 
+    // begin slide transition functions
     const getOffset = useCallback((index) => {
         return items.current
             .slice(0, index)
             .map(e => e.clientWidth)
             .reduce((a, b) => a + b, 0) * -1;
-    }, [items]);
-
-    const getWraparoundIndex = useCallback((index) => {
-        return index < visibleItems ? children.length + visibleItems - 1 : visibleItems;
-    }, [visibleItems, children]);
+    }, []);
 
     const doesIndexRequireSwap = useCallback((index) => {
         return infiniteMode && (index < visibleItems || index >= children.length + visibleItems);
     }, [infiniteMode, visibleItems, children]);
 
+    const getWraparoundIndex = useCallback((index) => {
+        return index < visibleItems ? children.length + visibleItems - 1 : visibleItems;
+    }, [visibleItems, children]);
+
     const performTransition = useCallback((newIndex, doAnimate = true) => {
-        // const nextIndex = getWraparoundIndex(newIndex);
         const needsSwap = doesIndexRequireSwap(newIndex);
-        const nextIndex = needsSwap ? getWraparoundIndex(newIndex) : newIndex;
-        // console.log('performing transition', newIndex, nextIndex, needsSwap);
 
         if (timeout.current) {
             clearTimeout(timeout.current);
             timeout.current = null;
-            if (doesIndexRequireSwap(currentIndex)) {
+            if (doesIndexRequireSwap(currentIndex)) { // handle infinite wraparound interruptions
                 setAnimate(false);
                 const index = getWraparoundIndex(currentIndex);
                 setCurrentIndex(index);
@@ -50,22 +63,26 @@ export default function CarouselTrack({ children, index = 0, itemIndex = 0, visi
             }
         }
 
+        const nextIndex = needsSwap ? getWraparoundIndex(newIndex) : newIndex;
+
         setAnimate(doAnimate);
 
-        if (needsSwap) {
+        if (needsSwap) { // performing infinite wraparound
             setCurrentIndex(newIndex);
             setOffset(getOffset(newIndex));
             timeout.current = setTimeout(() => {
-                performTransition(nextIndex, false);
                 timeout.current = null;
+                performTransition(nextIndex, false);
             }, transitionTime);
+            // onIndexChange && onIndexChange(newIndex, nextIndex - visibleItems);
             return;
         }
 
-        setOffset(getOffset(nextIndex));
         setCurrentIndex(nextIndex);
+        setOffset(getOffset(nextIndex));
         onIndexChange && onIndexChange(nextIndex, !infiniteMode ? nextIndex : nextIndex - visibleItems);
-    }, [infiniteMode, visibleItems, getWraparoundIndex, getOffset, doesIndexRequireSwap, onIndexChange, transitionTime]);
+    }, [infiniteMode, visibleItems, transitionTime]);
+    // end slide transition functions
 
     useEffect(() => {
         const indexOffset = !infiniteMode ? 0 : visibleItems;
@@ -77,11 +94,11 @@ export default function CarouselTrack({ children, index = 0, itemIndex = 0, visi
             clearTimeout(debounceTimeout);
             debounceTimeout = setTimeout(() => performTransition(currentIndexRef.current, false), 150);
         }
-        window.addEventListener('resize', windowResizeAdjustment);
+        window.addEventListener('resize', windowResizeAdjustment); 
         return () => {
-            window.removeEventListener('resize', windowResizeAdjustment)
+            window.removeEventListener('resize', windowResizeAdjustment);
         }
-    }, []);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
         if (!hasLoaded.current) {
@@ -95,36 +112,59 @@ export default function CarouselTrack({ children, index = 0, itemIndex = 0, visi
             nextIndex = (index !== currentIndex) ? index : itemIndex + visibleItems;
         }
         if (nextIndex === currentIndex) return;
-        performTransition(nextIndex);
-    }, [index, itemIndex, performTransition]);
+        performTransition(nextIndex, true); 
+    }, [index, itemIndex, infiniteMode, performTransition]);
 
+    // swipeable hook
+    const handlers = useSwipeable({
+        onSwipedLeft: (e) => performTransition(currentIndex + 1),
+        onSwipedRight: (e) => performTransition(currentIndex - 1),
+        trackMouse: true
+    });
+
+    // rendering items redefined each state change to get indexes right
     let referenceIndex = -1;
 
     const renderItem = (item) => {
         const index = ++referenceIndex;
+        const cssClass = ['carouselItem'];
+        if (currentIndex === index) cssClass.push('selected');
         return (
-            <div
+            <div 
                 ref={(e) => items.current[index] = e}
-                key={`carousel-item-${index}`}
-                className={`carouselItem${currentIndex === index ? ' selected' : ''}`}
-                style={{ flexBasis: `${1 / visibleItems * 100}%` }}
-            >
+                key={`carousel-item-${index}`} 
+                className={cssClass.join(' ')}
+                style={{
+                    flexBasis: `${1 / visibleItems * 100}%`
+                }}
+                onClick={(e) => onItemClick && onItemClick(index)}
+                onMouseOver={(e) => onItemHover && onItemHover(index)}
+                onMouseOut={(e) => onItemUnHover && onItemUnHover(index)}
+                >
                 {item}
             </div>
         )
-    }
+    };
 
-    const renderClones = (lower = true) => {
+    const renderClones = useCallback((lower = true) => {
         const items = [];
         const childrenClone = lower ? [ ...children].reverse().slice(0, visibleItems).reverse() : children;
         for (let i = 0; i < visibleItems; i++) {
             items.push(renderItem(childrenClone[i]));
         }
         return items;
+    }, [renderItem]);
+
+    // check for issues
+    if (!children || !children.length) return '';
+
+    if (visibleItems > children.length) {
+        visibleItems = children.length;
+        console.error("Carousel Track: Visible items cannot exceed the number of children.");
     }
 
     return (
-        <div className="carouselTrackWrapper">
+        <div {...handlers} className="carouselTrackWrapper">
             <div className="carouselTrack" style={{ transform: `translate3d(${offset}px, 0, 0)`, transitionDuration: `${animate ? transitionTime : 0}ms`, visibility: hasLoaded.current ? 'visible' : 'hidden'}}>
                 { infiniteMode && renderClones(true) }
                 { children.map((e, c) => renderItem(e)) }

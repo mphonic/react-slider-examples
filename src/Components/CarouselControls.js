@@ -1,22 +1,26 @@
 import { useState, useEffect, useCallback } from "react";
 
-export default function CarouselControls({ index = 0, itemIndex = 0, numItems = 3, transitionTime = 500, visibleItems = 1, disableOnTransition = true, infiniteMode = false, onIndexChange }) {
-    const [currentIndex, setCurrentIndex] = useState(0);
-    const [isDisabled, setIsDisabled] = useState(false);
+export default function CarouselControls({ index = 0, itemIndex = 0, numItems = 3, transitionTime = 500, visibleItems = 1, allowLooping = true, disableOnTransition = true, infiniteMode = false, onIndexChange }) {
+    const [currentIndex, setCurrentIndex] = useState(itemIndex);
+    const [disabled, setDisabled] = useState(false);
+
+    const minBackIndex = infiniteMode ? visibleItems : 0;
+    const maxBackIndex = infiniteMode ? numItems + visibleItems - 1 : numItems - 1;
 
     const updateIndex = useCallback((index) => {
         index = infiniteMode ? index : index % numItems;
         index = index < 0 ? (!infiniteMode ? numItems - 1 : numItems + visibleItems) : index;
-        setCurrentIndex(!infiniteMode ? index :
-            (index < visibleItems ? visibleItems + numItems - 1 :
-                (index >= numItems + visibleItems ? visibleItems : index)));
+        setCurrentIndex(!infiniteMode ? index : 
+            (index < visibleItems ? visibleItems + numItems - 1 : 
+                (index >= numItems + visibleItems ? visibleItems : index )
+            )
+        );
         onIndexChange && onIndexChange(index, !infiniteMode ? index : ((index - visibleItems) % numItems + numItems) % numItems);
-        // range from 0-3 ... index = -1 >>> index = 3 ... index = 4 >>> index = 0
-        // index % range
-        if (!disableOnTransition) return;
-        setIsDisabled(true);
-        setTimeout(() => setIsDisabled(false), transitionTime);
-    }, [disableOnTransition, infiniteMode, numItems, onIndexChange, transitionTime, visibleItems]);
+        if (disableOnTransition && transitionTime) {
+            setDisabled(true);
+            setTimeout(() => setDisabled(false), transitionTime);
+        }
+    }, [infiniteMode, numItems, visibleItems, onIndexChange]);
 
     useEffect(() => {
         const indexOffset = !infiniteMode ? 0 : visibleItems;
@@ -33,20 +37,20 @@ export default function CarouselControls({ index = 0, itemIndex = 0, numItems = 
         }
         const currentIndexComparisons = [currentIndex];
         if (infiniteMode) {
-            if (currentIndex === visibleItems) {
+            if (currentIndex === visibleItems) { // at first item so could be incoming wraparound
                 currentIndexComparisons.push(numItems + visibleItems);
-            } else if (currentIndex === numItems + visibleItems - 1) { // at the last item
+            } else if (currentIndex === numItems + visibleItems - 1) { // at last item
                 currentIndexComparisons.push(visibleItems - 1);
             }
         }
         if (currentIndexComparisons.indexOf(nextIndex) > -1) return;
         updateIndex(nextIndex);
-    }, [index, itemIndex, currentIndex, infiniteMode, numItems, visibleItems, updateIndex]);
+    }, [index, itemIndex, updateIndex]); 
 
     return (
         <div className="carouselControls">
-           <button onClick={() => updateIndex(currentIndex - 1)} disabled={isDisabled}>&lt;</button>
-           <button onClick={() => updateIndex(currentIndex + 1)} disabled={isDisabled}>&gt;</button>
+           { (infiniteMode || allowLooping || currentIndex > minBackIndex) && <button onClick={() => updateIndex(currentIndex - 1)} disabled={disabled}>&lt;</button> }
+           { (infiniteMode || allowLooping || currentIndex < maxBackIndex) &&<button onClick={() => updateIndex(currentIndex + 1)} disabled={disabled}>&gt;</button> }
         </div>
     )
 }

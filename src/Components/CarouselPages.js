@@ -7,8 +7,20 @@ export default function CarouselPages({ numItems, itemIndex = 0, children, onIte
         if (index === currentIndex) return;
         setCurrentIndex(index);
         onItemIndexChange && onItemIndexChange(index);
-    }, [currentIndex, onItemIndexChange]);
+    }, [onItemIndexChange]);
 
+    const renderItem = useCallback((item, index) => {
+        return (
+            <div 
+                key={`carousel-thumbnail-${index}`}
+                className={`carouselThumbnail${currentIndex === index ? ' selected' : ''}`}
+                onClick={(event) => updateIndex(index)}
+            >
+                {item}
+            </div>
+        )
+    }, [currentIndex]);
+    
     useEffect(() => {
         if (itemIndex === currentIndex) return;
         updateIndex(itemIndex);
@@ -18,7 +30,7 @@ export default function CarouselPages({ numItems, itemIndex = 0, children, onIte
         <div className="carouselPages">
             {
                 [...Array(numItems).keys()].map((_, c) => (
-                    <div
+                    <div 
                         key={`carousel-page-${c}`}
                         className={`carouselPage${currentIndex === c ? ' selected' : ''}`}
                         onClick={(event) => updateIndex(c)}
@@ -30,18 +42,12 @@ export default function CarouselPages({ numItems, itemIndex = 0, children, onIte
         </div>
     )
 
+    // if there are children, treat as thumbnails
+
     return (
         <div className="carouselThumbnails">
             {
-                children.map((e, c) => (
-                    <div
-                        key={`carousel-thumbnail-${c}`}
-                        className={`carouselThumbnail${currentIndex === c ? ' selected' : ''}`}
-                        onClick={(event) => updateIndex(c)}
-                    >
-                        {e}
-                    </div>
-                ))
+                children.map((e, c) => renderItem(e, c))
             }
         </div>
     )
