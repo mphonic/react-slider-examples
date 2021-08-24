@@ -26,8 +26,9 @@ function App() {
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [carouselItemIndex, setCarouselItemIndex] = useState(0);
 
-  const onCarouselIndexChange = (index) => {
+  const onCarouselIndexChange = (index, itemIndex) => {
     setCarouselIndex(index);
+    setCarouselItemIndex(itemIndex);
   }
 
   const onCarouselItemIndexChange = (index) => {
@@ -37,7 +38,7 @@ function App() {
   const settings = {
     index: carouselIndex,
     itemIndex: carouselItemIndex,
-    visibleItems: 1,
+    visibleItems: 2,
     numItems: carouselItems.length,
     infiniteMode: true,
     transitionTime: 500,
@@ -48,6 +49,7 @@ function App() {
 
   return (
     <div className="App">
+      <p>{carouselItems[carouselItemIndex].description}</p>
       <CarouselTrack {...settings}>
         {
           carouselItems.map((e, c) => (

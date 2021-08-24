@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import "./Carousel.css";
 
-export default function CarouselTrack({ children, index = 0, itemIndex = 0, visibleItems = 1, infiniteMode = false, transitionTime = 500 }) {
+export default function CarouselTrack({ children, index = 0, itemIndex = 0, visibleItems = 1, infiniteMode = false, transitionTime = 500, onIndexChange }) {
     const [currentIndex, _setCurrentIndex] = useState(0);
     const [offset, setOffset] = useState(0);
     const [animate, setAnimate] = useState(true);
@@ -16,58 +16,22 @@ export default function CarouselTrack({ children, index = 0, itemIndex = 0, visi
         _setCurrentIndex(index);
     }
 
-    useEffect(() => {
-        const indexOffset = !infiniteMode ? 0 : visibleItems;
-        const firstIndex = index == null ? itemIndex + indexOffset : Math.max(index, indexOffset);
-        performTransition(firstIndex, false);
-
-        console.log('called initial useEffect');
-
-        let debounceTimeout = null;
-        const windowResizeAdjustment = () => {
-            clearTimeout(debounceTimeout);
-            debounceTimeout = setTimeout(() => performTransition(currentIndexRef.current, false), 150);
-        }
-        window.addEventListener('resize', windowResizeAdjustment);
-        return () => {
-            window.removeEventListener('resize', windowResizeAdjustment)
-        }
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-    useEffect(() => {
-        console.log('called useEffect on index change');
-        if (!hasLoaded.current) {
-            hasLoaded.current = true;
-            return;
-        }
-        let nextIndex;
-        if (!infiniteMode) {
-            nextIndex = itemIndex === currentIndex ? index : itemIndex;
-        } else {
-            nextIndex = (index !== currentIndex) ? index : itemIndex + visibleItems;
-        }
-        if (nextIndex === currentIndex) return;
-        performTransition(nextIndex);
-    }, [index, itemIndex]); // eslint-disable-line react-hooks/exhaustive-deps
-
-    let referenceIndex = -1;
-
-    const getOffset = (index) => {
+    const getOffset = useCallback((index) => {
         return items.current
             .slice(0, index)
             .map(e => e.clientWidth)
             .reduce((a, b) => a + b, 0) * -1;
-    }
+    }, [items]);
 
-    const getWraparoundIndex = (index) => {
+    const getWraparoundIndex = useCallback((index) => {
         return index < visibleItems ? children.length + visibleItems - 1 : visibleItems;
-    }
+    }, [visibleItems, children]);
 
-    const doesIndexRequireSwap = (index) => {
+    const doesIndexRequireSwap = useCallback((index) => {
         return infiniteMode && (index < visibleItems || index >= children.length + visibleItems);
-    }
+    }, [infiniteMode, visibleItems, children]);
 
-    const performTransition = (newIndex, doAnimate = true) => {
+    const performTransition = useCallback((newIndex, doAnimate = true) => {
         // const nextIndex = getWraparoundIndex(newIndex);
         const needsSwap = doesIndexRequireSwap(newIndex);
         const nextIndex = needsSwap ? getWraparoundIndex(newIndex) : newIndex;
@@ -100,7 +64,41 @@ export default function CarouselTrack({ children, index = 0, itemIndex = 0, visi
 
         setOffset(getOffset(nextIndex));
         setCurrentIndex(nextIndex);
-    }
+        onIndexChange && onIndexChange(nextIndex, !infiniteMode ? nextIndex : nextIndex - visibleItems);
+    }, [infiniteMode, visibleItems, getWraparoundIndex, getOffset, doesIndexRequireSwap, onIndexChange, transitionTime]);
+
+    useEffect(() => {
+        const indexOffset = !infiniteMode ? 0 : visibleItems;
+        const firstIndex = index == null ? itemIndex + indexOffset : Math.max(index, indexOffset);
+        performTransition(firstIndex, false);
+
+        let debounceTimeout = null;
+        const windowResizeAdjustment = () => {
+            clearTimeout(debounceTimeout);
+            debounceTimeout = setTimeout(() => performTransition(currentIndexRef.current, false), 150);
+        }
+        window.addEventListener('resize', windowResizeAdjustment);
+        return () => {
+            window.removeEventListener('resize', windowResizeAdjustment)
+        }
+    }, []);
+
+    useEffect(() => {
+        if (!hasLoaded.current) {
+            hasLoaded.current = true;
+            return;
+        }
+        let nextIndex;
+        if (!infiniteMode) {
+            nextIndex = itemIndex === currentIndex ? index : itemIndex;
+        } else {
+            nextIndex = (index !== currentIndex) ? index : itemIndex + visibleItems;
+        }
+        if (nextIndex === currentIndex) return;
+        performTransition(nextIndex);
+    }, [index, itemIndex, performTransition]);
+
+    let referenceIndex = -1;
 
     const renderItem = (item) => {
         const index = ++referenceIndex;
@@ -118,12 +116,9 @@ export default function CarouselTrack({ children, index = 0, itemIndex = 0, visi
 
     const renderClones = (lower = true) => {
         const items = [];
+        const childrenClone = lower ? [ ...children].reverse().slice(0, visibleItems).reverse() : children;
         for (let i = 0; i < visibleItems; i++) {
-            if (lower) {
-                items.push(renderItem(children[children.length - visibleItems - i]));
-            } else {
-                items.push(renderItem(children[i]));
-            }
+            items.push(renderItem(childrenClone[i]));
         }
         return items;
     }
